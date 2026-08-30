@@ -94,41 +94,59 @@ def extract_citations_and_claims(wikitext: str) -> List[Dict]:
             })
     return final_results
 
-def fetch_article_revisions(title: str) -> list:
-    # OPEN RISK: The 50-revision ceiling causes heavily-edited articles to fall back to a uniform
-    # fallback date, which directly impacts Agent 2's historical snapshot accuracy.
-    # A choice between restricting the Phase 6 evaluation set to low-edit articles or implementing
-    # `rvcontinue` pagination will be decided before Phase 6.
+def fetch_citation_timestamp(title: str, citation_url: str) -> tuple:
     params = {
         "action": "query",
         "prop": "revisions",
         "titles": title,
-        "rvprop": "timestamp|content",
+        "rvprop": "ids|timestamp|content",
         "rvslots": "main",
         "rvlimit": 50,
+        "rvdir": "older",
         "format": "json"
     }
-    data = make_api_request(params)
-    pages = data.get("query", {}).get("pages", {})
-    if not pages:
-        return []
-    page = list(pages.values())[0]
-    return page.get("revisions", [])
-
-def fetch_citation_timestamp(revisions: list, citation_url: str) -> str:
-    earliest_timestamp = None
-    for rev in revisions:
-        content = rev.get("slots", {}).get("main", {}).get("*", "")
-        if citation_url in content:
-            earliest_timestamp = rev.get("timestamp")
-        else:
+    
+    oldest_timestamp = None
+    oldest_revid = None
+    
+    for attempt in range(10):
+        data = make_api_request(params)
+        pages = data.get("query", {}).get("pages", {})
+        if not pages:
+            break
+        page = list(pages.values())[0]
+        revisions = page.get("revisions", [])
+        if not revisions:
             break
             
-    if earliest_timestamp:
-        return earliest_timestamp
-    if revisions:
-        return revisions[0].get("timestamp", "")
-    return ""
+        earliest_timestamp = None
+        earliest_revid = None
+        for rev in revisions:
+            content = rev.get("slots", {}).get("main", {}).get("*", "")
+            if citation_url in content:
+                earliest_timestamp = rev.get("timestamp")
+                earliest_revid = rev.get("revid")
+            else:
+                break
+                
+        if earliest_timestamp:
+            oldest_timestamp = earliest_timestamp
+            oldest_revid = earliest_revid
+            if earliest_timestamp != revisions[-1].get("timestamp"):
+                return oldest_timestamp, True, oldest_revid
+        else:
+            if oldest_timestamp:
+                return oldest_timestamp, True, oldest_revid
+            else:
+                return revisions[0].get("timestamp", ""), False, revisions[0].get("revid")
+                
+        rvcontinue = data.get("continue", {}).get("rvcontinue")
+        if not rvcontinue:
+            return oldest_timestamp, True, oldest_revid
+            
+        params["rvcontinue"] = rvcontinue
+        
+    return oldest_timestamp or "", False, oldest_revid
 
 def harvest_citations(title: str) -> List[Dict]:
     wikitext = fetch_wikitext(title)
@@ -136,16 +154,17 @@ def harvest_citations(title: str) -> List[Dict]:
         return []
         
     extracted = extract_citations_and_claims(wikitext)
-    revisions = fetch_article_revisions(title)
     
     results = []
     for item in extracted:
-        insertion_date = fetch_citation_timestamp(revisions, item["url"])
+        insertion_date, reliable, revid = fetch_citation_timestamp(title, item["url"])
         results.append({
             "claim": item["claim"],
             "url": item["url"],
             "ref_raw": item["ref_raw"],
-            "insertion_date": insertion_date
+            "insertion_date": insertion_date,
+            "timestamp_reliable": reliable,
+            "revid": revid
         })
     return results
 
@@ -159,3 +178,4 @@ if __name__ == "__main__":
         print(f"Claim: {c['claim']}")
         print(f"URL: {c['url']}")
         print(f"Insertion Date: {c['insertion_date']}")
+        print(f"Reliable: {c.get('timestamp_reliable')}")

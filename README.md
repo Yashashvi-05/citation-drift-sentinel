@@ -22,7 +22,7 @@ The system maps LLM analysis into four distinct statuses:
 
 ## Known Limitations
 
-* **Wikipedia API Pagination Limit:** The Harvester currently uses a hard limit of `rvlimit=50` when fetching article revisions. For heavily-edited articles, this ceiling causes the insertion date to fall back to an artificially recent date, breaking historical snapshot accuracy. (For instance, the "Python (programming language)" article was excluded from formal evaluation due to beta2 vs rc1 mismatch caused by this limit).
+* **Wikipedia API Pagination Limit:** The initial "quiet article" workaround (restricting checks to low-edit articles to bypass the `rvlimit=50` ceiling) was tested empirically and abandoned, as 4 out of 5 tech-history candidates (including Google Reader and Vine) immediately hit the limit. Instead, true `rvcontinue` pagination was implemented. To balance deep-history accuracy against runaway API loops on heavily edited articles, pagination is bounded by a 10-batch safety cap (up to 500 revisions per citation). If a citation's insertion point is found within this cap, it is flagged with `timestamp_reliable: True`. If the cap is exhausted before the insertion point is found, the timestamp defaults to the oldest revision fetched and is flagged as unreliable.
 * **LLM Confidence Blindspot:** During testing, the LLM's self-reported confidence failed to naturally trigger the escalation branch, even when it exhibited genuine reasoning gaps (e.g., falsely verifying an unsupported claim). This architectural finding necessitates moving away from relying on self-reported confidence as an escalation trigger in future iterations.
 
 ## Setup Instructions
