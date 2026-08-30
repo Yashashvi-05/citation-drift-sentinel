@@ -1,0 +1,5 @@
+requests
+mwparserfromhell
+groq
+streamlit
+beautifulsoup4
