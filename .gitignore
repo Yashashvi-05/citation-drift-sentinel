@@ -7,3 +7,5 @@ __pycache__/
 
 temp_fallback.db
 temp_guardrails.db
+
+sentinel_cache.db
