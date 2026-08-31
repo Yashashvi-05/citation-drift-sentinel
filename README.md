@@ -11,7 +11,7 @@ Naive automated approaches make this worse, not better: a single-pass LLM check 
 
 ## Live Demo
 * **Deployed Dashboard:** [https://citation-drift-sentinel-dyswhg8n3ff38ttgk7ssts.streamlit.app/](https://citation-drift-sentinel-dyswhg8n3ff38ttgk7ssts.streamlit.app/) — explore the full 15-citation dataset, benchmark comparison, and visual diffs live, with zero setup.
-* **Video Walkthrough:** [link once uploaded]
+* **Video Walkthrough:** [https://drive.google.com/file/d/16gYWbxDOqnIrw94DAyPp9Q0mIpQE5MQH/view?usp=drivesdk](https://drive.google.com/file/d/16gYWbxDOqnIrw94DAyPp9Q0mIpQE5MQH/view?usp=drivesdk)
 * **Full Evidence:** [`BENCHMARK_REPORT.md`](./BENCHMARK_REPORT.md) · [`ESCALATION_TRACE.log`](./ESCALATION_TRACE.log) · [`evaluation_results.jsonl`](./evaluation_results.jsonl) (raw dataset)
 
 ## Core Architecture
@@ -93,11 +93,29 @@ Reproducing this project requires a free Groq API key.
 
 ## Usage
 
-To run the Sentinel orchestrator across the configured test article:
+This project has four entry points, depending on what you want to do:
 
+**Run the full one-command reproducibility pipeline** (recommended — regenerates the entire benchmark, report, and visual diffs from scratch):
+```powershell
+python bootstrap.py
+```
+
+**Run the interactive orchestrator on a single article:**
 ```powershell
 python src/main.py
 ```
+
+**Reproduce just the 15-citation benchmark dataset:**
+```powershell
+python run_evaluation.py
+```
+
+**Launch the dashboard locally:**
+```powershell
+streamlit run app.py
+```
+
+See [`REPRODUCTION.md`](./REPRODUCTION.md) for full setup steps, expected runtime, and Groq API quota.
 
 ## Testing
 
