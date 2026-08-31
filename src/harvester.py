@@ -11,8 +11,9 @@ def make_api_request(params: dict) -> dict:
     headers = {"User-Agent": USER_AGENT}
     for attempt in range(3):
         try:
-            response = requests.get(BASE_URL, params=params, headers=headers)
+            response = requests.get(BASE_URL, params=params, headers=headers, timeout=15)
             if response.status_code == 429:
+                print(f"  [Network] API rate limit/error. Retrying in {2 ** attempt} seconds (Attempt {attempt + 1})...")
                 time.sleep(2 ** attempt)
                 continue
             response.raise_for_status()
@@ -20,6 +21,7 @@ def make_api_request(params: dict) -> dict:
         except requests.exceptions.RequestException as e:
             if attempt == 2:
                 raise
+            print(f"  [Network] API rate limit/error. Retrying in {2 ** attempt} seconds (Attempt {attempt + 1})...")
             time.sleep(2 ** attempt)
     return {}
 
@@ -94,7 +96,12 @@ def extract_citations_and_claims(wikitext: str) -> List[Dict]:
             })
     return final_results
 
-def fetch_citation_timestamp(title: str, citation_url: str) -> tuple:
+_REVISION_CACHE = {}
+
+def _fetch_all_revisions(title: str):
+    if title in _REVISION_CACHE:
+        return _REVISION_CACHE[title]
+        
     params = {
         "action": "query",
         "prop": "revisions",
@@ -106,10 +113,11 @@ def fetch_citation_timestamp(title: str, citation_url: str) -> tuple:
         "format": "json"
     }
     
-    oldest_timestamp = None
-    oldest_revid = None
+    all_revs = []
+    history_exhausted = False
     
     for attempt in range(10):
+        print(f"  [Pagination] Fetching batch {attempt + 1} (Max 10) for article: {title}...")
         data = make_api_request(params)
         pages = data.get("query", {}).get("pages", {})
         if not pages:
@@ -119,42 +127,53 @@ def fetch_citation_timestamp(title: str, citation_url: str) -> tuple:
         if not revisions:
             break
             
-        earliest_timestamp = None
-        earliest_revid = None
-        for rev in revisions:
-            content = rev.get("slots", {}).get("main", {}).get("*", "")
-            if citation_url in content:
-                earliest_timestamp = rev.get("timestamp")
-                earliest_revid = rev.get("revid")
-            else:
-                break
-                
-        if earliest_timestamp:
-            oldest_timestamp = earliest_timestamp
-            oldest_revid = earliest_revid
-            if earliest_timestamp != revisions[-1].get("timestamp"):
-                return oldest_timestamp, True, oldest_revid
+        all_revs.extend(revisions)
+        
+        rvcontinue = data.get("continue", {}).get("rvcontinue")
+        if not rvcontinue:
+            history_exhausted = True
+            break
+            
+        params["rvcontinue"] = rvcontinue
+        
+    _REVISION_CACHE[title] = (all_revs, history_exhausted)
+    return all_revs, history_exhausted
+
+def fetch_citation_timestamp(title: str, citation_url: str) -> tuple:
+    all_revs, history_exhausted = _fetch_all_revisions(title)
+    
+    if not all_revs:
+        return "", False, None
+        
+    oldest_timestamp = None
+    oldest_revid = None
+    
+    for rev in all_revs:
+        content = rev.get("slots", {}).get("main", {}).get("*", "")
+        if citation_url in content:
+            oldest_timestamp = rev.get("timestamp")
+            oldest_revid = rev.get("revid")
         else:
             if oldest_timestamp:
                 return oldest_timestamp, True, oldest_revid
             else:
-                return revisions[0].get("timestamp", ""), False, revisions[0].get("revid")
+                return all_revs[0].get("timestamp", ""), False, all_revs[0].get("revid")
                 
-        rvcontinue = data.get("continue", {}).get("rvcontinue")
-        if not rvcontinue:
-            return oldest_timestamp, True, oldest_revid
-            
-        params["rvcontinue"] = rvcontinue
+    if oldest_timestamp:
+        return oldest_timestamp, history_exhausted, oldest_revid
         
-    return oldest_timestamp or "", False, oldest_revid
+    return all_revs[0].get("timestamp", ""), False, all_revs[0].get("revid")
 
-def harvest_citations(title: str) -> List[Dict]:
+def harvest_citations(title: str, limit: int = None) -> List[Dict]:
     wikitext = fetch_wikitext(title)
     if not wikitext:
         return []
         
     extracted = extract_citations_and_claims(wikitext)
     
+    if limit:
+        extracted = extracted[:limit]
+        
     results = []
     for item in extracted:
         insertion_date, reliable, revid = fetch_citation_timestamp(title, item["url"])

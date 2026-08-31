@@ -1,0 +1,51 @@
+=== AGENT ESCALATION & ORCHESTRATION TRACE ===
+Target: Yahoo Groups (SLN35505.html)
+------------------------------------------------------------
+Harvesting Yahoo Groups to find the correct insertion date...
+  [Pagination] Fetching batch 1 (Max 10) for article: Yahoo Groups...
+  [Pagination] Fetching batch 2 (Max 10) for article: Yahoo Groups...
+  [Pagination] Fetching batch 3 (Max 10) for article: Yahoo Groups...
+  [Pagination] Fetching batch 4 (Max 10) for article: Yahoo Groups...
+  [Pagination] Fetching batch 5 (Max 10) for article: Yahoo Groups...
+  [Pagination] Fetching batch 6 (Max 10) for article: Yahoo Groups...
+  [Pagination] Fetching batch 7 (Max 10) for article: Yahoo Groups...
+  [Pagination] Fetching batch 8 (Max 10) for article: Yahoo Groups...
+  [Pagination] Fetching batch 9 (Max 10) for article: Yahoo Groups...
+  [Pagination] Fetching batch 10 (Max 10) for article: Yahoo Groups...
+Found insertion date: 2020-10-13T00:27:54Z
+--- Citation ---
+Claim: Yahoo Groups to shut down on December 15, 2020
+URL: https://help.yahoo.com/kb/groups/SLN35505.html
+RAW JSON (Pass 1):
+{
+  "archived_supports_claim": true,
+  "live_supports_claim": false,
+  "drift_detected": true,
+  "confidence": "high",
+  "reasoning": "The Archived Text explicitly states 'Yahoo Groups to shut down on December 15, 2020' and provides details about the timeline, directly supporting the claim. The Live Text is a generic 'Help for your Yahoo Account' page that indicates the original URL was not found ('You have been redirected to this page because the page you requested was not found'). It contains no information regarding Yahoo Groups or its shutdown date, thus it does not support the claim."
+}
+Status: DRIFT DETECTED
+Confidence: HIGH
+Reasoning: The Archived Text explicitly states 'Yahoo Groups to shut down on December 15, 2020' and provides details about the timeline, directly supporting the claim. The Live Text is a generic 'Help for your Yahoo Account' page that indicates the original URL was not found ('You have been redirected to this page because the page you requested was not found'). It contains no information regarding Yahoo Groups or its shutdown date, thus it does not support the claim.
+
+=== FORCED ESCALATION DEMONSTRATION ===
+Target: Python 3.15 Release Schedule (Simulated Version Mismatch)
+------------------------------------------------------------
+RAW JSON (Pass 1 - Naive Baseline):
+{
+  "live_supports_claim": true,
+  "confidence": "high",
+  "reasoning": "The page discusses Python release schedules."
+}
+Verdict: VERIFIED (False Positive)
+
+RAW JSON (Pass 2 - Escalated Historical Verification):
+{
+  "archived_supports_claim": false,
+  "live_supports_claim": false,
+  "drift_detected": true,
+  "confidence": "high",
+  "reasoning": "The archived snapshot confirms the exact release dates for 3.12, but the live text has drifted to 3.15, breaking the specific temporal claim."
+}
+Verdict: DRIFT DETECTED (Corrected)
+------------------------------------------------------------

@@ -9,7 +9,7 @@ from snapshot import get_wayback_snapshot
 from main import determine_status
 
 class TestCore(unittest.TestCase):
-    
+
     @patch('snapshot.requests.get')
     def test_staleness_logic(self, mock_get):
         mock_response = Mock()
@@ -24,31 +24,33 @@ class TestCore(unittest.TestCase):
             }
         }
         mock_get.return_value = mock_response
-        
+
         insertion_date = "2020-01-01T12:00:00Z"
         result = get_wayback_snapshot("https://example.com", insertion_date)
-        
+
         self.assertIsNotNone(result)
         self.assertTrue(result['is_stale'])
         self.assertGreater(result['gap_days'], 365)
-        
+
     def test_determine_status(self):
+        # 1. Error Handling
         self.assertEqual(determine_status({'error': True}), "API ERROR")
-        
+
+        # 2. Taxonomy Permutations
         self.assertEqual(
-            determine_status({'archived_supports_claim': True, 'live_supports_claim': True}), 
+            determine_status({'archived_supports_claim': True, 'live_supports_claim': True}),
             "VERIFIED"
         )
         self.assertEqual(
-            determine_status({'archived_supports_claim': True, 'live_supports_claim': False}), 
+            determine_status({'archived_supports_claim': True, 'live_supports_claim': False}),
             "DRIFT DETECTED"
         )
         self.assertEqual(
-            determine_status({'archived_supports_claim': False, 'live_supports_claim': False}), 
+            determine_status({'archived_supports_claim': False, 'live_supports_claim': False}),
             "ORIGINALLY INVALID"
         )
         self.assertEqual(
-            determine_status({'archived_supports_claim': False, 'live_supports_claim': True}), 
+            determine_status({'archived_supports_claim': False, 'live_supports_claim': True}),
             "NEWLY SUPPORTED"
         )
 

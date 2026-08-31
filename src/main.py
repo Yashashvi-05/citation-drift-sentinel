@@ -3,10 +3,14 @@ import json
 from harvester import harvest_citations
 from snapshot import fetch_snapshots
 from analyzer import analyze_drift
+import memory
 
 def determine_status(analysis: dict) -> str:
     if analysis.get('error'):
         return "API ERROR"
+        
+    if analysis.get('dead_link'):
+        return "DEAD_LINK"
         
     archived_supports = analysis.get('archived_supports_claim')
     live_supports = analysis.get('live_supports_claim')
@@ -21,6 +25,7 @@ def determine_status(analysis: dict) -> str:
         return "NEWLY SUPPORTED"
 
 def run_sentinel(article_title: str, max_citations: int = 5, debug: bool = False):
+    memory.init_db()
     print("=" * 60)
     print(f"CITATION DRIFT SENTINEL: Initializing run for '{article_title}'")
     print("=" * 60)
@@ -52,8 +57,14 @@ def run_sentinel(article_title: str, max_citations: int = 5, debug: bool = False
                 print("WARNING: Snapshot is missing or stale (>365 days). Skipping analysis.\n")
                 continue
                 
-            if not result.get('archived_text') or not result.get('live_text'):
-                print("WARNING: Live or archived text could not be extracted. Skipping analysis.\n")
+            if not result.get('archived_text'):
+                print("WARNING: Archived text could not be extracted. Skipping analysis.\n")
+                continue
+                
+            cached = memory.get_cache(article_title, url, result.get('live_text', ''), source='main')
+            if cached:
+                print("[Cache Hit (main)]")
+                print(f"Status: {cached['sentinel_status']}\n")
                 continue
                 
             analysis = analyze_drift(claim, result['archived_text'], result['live_text'], escalated=False)
@@ -84,6 +95,18 @@ def run_sentinel(article_title: str, max_citations: int = 5, debug: bool = False
             print(f"Status: {status_text}")
             print(f"Confidence: {confidence.upper()}")
             print(f"Reasoning: {reasoning}\n")
+            
+            if status_text != "API ERROR":
+                memory.set_cache(
+                    article=article_title, 
+                    url=url, 
+                    live_text=result.get('live_text', ''), 
+                    source='main', 
+                    sentinel_status=status_text, 
+                    sentinel_live=analysis.get('live_supports_claim') if status_text != "DEAD_LINK" else None, 
+                    sentinel_archived=analysis.get('archived_supports_claim'), 
+                    baseline_live=None
+                )
             
             time.sleep(2)
             

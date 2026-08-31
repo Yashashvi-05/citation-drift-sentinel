@@ -8,7 +8,7 @@ dotenv.load_dotenv()
 
 def analyze_drift(claim: str, archived_text: str, live_text: str, escalated: bool = False) -> dict:
     try:
-        client = Groq()
+        client = Groq(timeout=15.0)
         
         escalation_instruction = ""
         if escalated:
@@ -22,11 +22,15 @@ Your task is to evaluate:
 
 You must also assign a confidence level ("low", "medium", or "high") to your evaluation.
 
+You MUST extract exact, verbatim substrings from the text to populate these. Do not paraphrase. If no quote supports the verdict, output null.
+
 You must output your analysis in JSON format exactly matching this schema:
 {{
   "archived_supports_claim": bool,
   "live_supports_claim": bool,
   "drift_detected": bool,
+  "live_quote": "string" | null,
+  "archived_quote": "string" | null,
   "confidence": "low" | "medium" | "high",
   "reasoning": "string"
 }}
@@ -54,7 +58,20 @@ Live Text: {live_text}"""
                 content = response.choices[0].message.content
                 result = json.loads(content)
                 
+                # Programmatic Quote Verification
+                result["quote_verified"] = True
+                live_quote = result.get("live_quote")
+                if live_quote and (not isinstance(live_quote, str) or live_quote not in live_text):
+                    result["quote_verified"] = False
+                archived_quote = result.get("archived_quote")
+                if archived_quote and (not isinstance(archived_quote, str) or archived_quote not in archived_text):
+                    result["quote_verified"] = False
+                
                 # Enforce the logic programmatically just in case
+                if not live_text:
+                    result["dead_link"] = True
+                    result["live_supports_claim"] = False
+                    
                 if result.get("archived_supports_claim") and not result.get("live_supports_claim"):
                     result["drift_detected"] = True
                     
