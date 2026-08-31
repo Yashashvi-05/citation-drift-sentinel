@@ -115,4 +115,4 @@ def run_sentinel(article_title: str, max_citations: int = 5, debug: bool = False
             continue
 
 if __name__ == "__main__":
-    run_sentinel("Python (programming language)", max_citations=3, debug=False)
+    run_sentinel("Yahoo Groups", max_citations=3, debug=False)

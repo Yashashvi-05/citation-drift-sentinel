@@ -24,9 +24,9 @@ The system maps LLM analysis into four distinct statuses:
 
 Based on a 15-citation evaluation dataset across heavily edited tech-history articles, the Sentinel was benchmarked against a naive, single-pass LLM (Baseline). 
 
-Out of 11 successfully classified citations, the naive baseline fell short in 5 cases, exposing three distinct limitations of standard LLM fact-checking:
+Comparing the baseline against the Sentinel's orchestration exposes three distinct limitations of standard LLM fact-checking:
 
-* **20% Raw Accuracy Disagreements (2/10 viable citations):** The baseline’s evaluation of the live text was flatly wrong. It either failed to extract support that existed (False Negative) or lazily validated support that was never there (False Positive). Sentinel caught and corrected both.
+* **20% Raw Accuracy Disagreements (2/10 viable citations):** The baseline's evaluation of the live text was flatly wrong. It either failed to extract support that existed (False Negative) or lazily validated support that was never there (False Positive). Sentinel caught and corrected both.
 * **20% Structural Blind-Spot Findings (2/10 viable citations):** The baseline correctly evaluated the live page as unsupported, but falsely penalized the Wikipedia editor. Because it lacks historical memory, it could not detect that the claim was perfectly valid when inserted and had simply decayed over time (Citation Drift). Sentinel's Wayback Machine integration proved historical validity.
 * **9% Dead-Link Handling (1/11 classified citations):** When a source was completely dead (404), the baseline pipeline threw a null exception. Sentinel gracefully caught and categorized this as a `DEAD_LINK`, preserving critical metadata about internet decay rather than discarding the data.
 
